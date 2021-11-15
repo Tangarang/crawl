@@ -63,6 +63,8 @@
 #endif
 #include "ui.h"
 
+#include "options_menu.h"
+
 using namespace ui;
 
 static void _loading_message(string m)
@@ -675,7 +677,9 @@ public:
                     + newgame_char_description(defaults) + "\n";
         }
         instructions_text +=
-            "<white>[ctrl-p]</white> view rc file information and log";
+            "<white>[ctrl-p]</white> view rc file information and log\n";
+        instructions_text +=
+            "<white>[ctrl-o]</white> open options menu";
         if (recent_error_messages())
             instructions_text += " (<red>Errors during initialization!</red>)";
 
@@ -867,6 +871,11 @@ void UIStartupMenu::on_show()
                 input_string.erase(input_string.size() - 1);
                 changed_name = true;
             }
+        }
+        else if (keyn == CONTROL('O')) {
+            // call function here
+            options_menu();
+             
         }
 
         if (!changed_name)
