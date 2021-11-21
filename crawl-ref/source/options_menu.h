@@ -1,4 +1,5 @@
 //header file of options_menu
-#pragma once
-
+#ifndef OPTIONS_MENU_U
+#define OPTIONS_MENU_U
 void options_menu();
+#endif
