@@ -11,40 +11,34 @@
 #include "libutil.h"
 #include "libconsole.h"
 #include "outer-menu.h"
-#include <iostream>
 
 // core program of options_menu
 
 using namespace ui;
 
-static void _show_options_menu(); // later move the function block here
-
-void options_menu() {
-    _show_options_menu();
-}
-
-enum optType {
-    // list of available options goes here
+// this should contain all possible option names
+enum option_identifier {
     OPTION_TYPE_UNSPECIFIED,
-    TEST_OPT0,  
-    TEST_OPT1,
-    NUM_OPTION_TYPE
+    OPTION_TYPE_1, 
+    OPTION_TYPE_2,
+    NUM_OPTIONS
 };
 
-struct option_menu_item {
-    optType id;
+#ifndef DGAMELAUNCH // does not work with dgamelaunch?
+
+struct options_menu_item
+{
+    option_identifier id;
     const char* label;
     const char* description;
 };
 
-static const option_menu_item entries[] =
+static const options_menu_item entries[] =
 {
-    {TEST_OPT0, "test option 0", "does this work?"},
-    {TEST_OPT1, "test option 1", "does this also work"},
+    {OPTION_TYPE_1, "Test 1", "testing one"},
+    {OPTION_TYPE_2, "Test 2", "testing two" },
 };
 
-
-// should be called by the UIOptionsMenu class
 static void _construct_options_menu(shared_ptr<OuterMenu>& container)
 {
     for (unsigned int i = 0; i < ARRAYSZ(entries); ++i)
@@ -56,7 +50,7 @@ static void _construct_options_menu(shared_ptr<OuterMenu>& container)
         auto hbox = make_shared<Box>(Box::HORZ);
         hbox->set_cross_alignment(Widget::Align::CENTER);
         auto tile = make_shared<Image>();
-        tile->set_tile(tile_def(tileidx_gametype(entry.id)));
+        tile->set_tile(tile_def(tileidx_gametype(entry.id))); // need to define options tiles
         tile->set_margin_for_sdl(0, 6, 0, 0);
         hbox->add_child(move(tile));
         hbox->add_child(label);
@@ -78,11 +72,11 @@ static void _construct_options_menu(shared_ptr<OuterMenu>& container)
     }
 }
 
-
-class UIOptionsMenu : public Widget {
+class UIOptionsMenu : public Widget
+{
 public:
-    UIOptionsMenu() : done(false), selected_option(OPTION_TYPE_UNSPECIFIED) {
-        
+    UIOptionsMenu() : done(false), selected_option(1)
+    {
         m_root = make_shared<Box>(Box::VERT);
         add_internal_child(m_root);
         m_root->set_cross_alignment(Widget::Align::STRETCH);
@@ -91,6 +85,7 @@ public:
         grid->set_margin_for_crt(0, 0, 1, 0);
 
         descriptions = make_shared<Switcher>();
+
         auto mode_prompt = make_shared<Text>("Choices:");
         mode_prompt->set_margin_for_crt(0, 1, 1, 0);
         mode_prompt->set_margin_for_sdl(0, 0, 10, 0);
@@ -105,36 +100,32 @@ public:
 #else
         options_menu->min_size().height = 2;
 #endif
-        
+
         grid->add_child(move(mode_prompt), 0, 1);
         grid->add_child(options_menu, 1, 1);
-        
-
 
         m_root->on_activate_event([this](const ActivateEvent& event) {
             const auto button = static_pointer_cast<const MenuButton>(event.target());
             this->menu_item_activated(button->id);
             return true;
         });
-        
+
         for (auto& w : options_menu->get_buttons())
         {
             w->on_focusin_event([w, this](const FocusEvent&) {
                 return this->on_button_focusin(*w);
             });
         }
-        
+
         grid->column_flex_grow(0) = 1;
         grid->column_flex_grow(1) = 10;
-        
+
         m_root->add_child(move(grid));
-        
+
         descriptions->set_margin_for_crt(1, 0, 0, 0);
         descriptions->set_margin_for_sdl(10, 0, 0, 0);
         m_root->add_child(descriptions);
-        
-        
-    }; // UIOptionsMenu() constructor
+    };
 
     virtual void _render() override;
     virtual SizeReq _get_preferred_size(Direction dim, int prosp_width) override;
@@ -143,24 +134,22 @@ public:
     bool has_allocated = false;
 
     bool done;
-    bool end_game;
     virtual shared_ptr<Widget> get_child_at_offset(int, int) override {
         return m_root;
     }
+
 private:
+
     bool on_button_focusin(const MenuButton& btn)
     {
         selected_option = btn.id;
-        // needs switch for each possible option in this format
-        // probably best to switch to a loop
         switch (selected_option)
         {
-        case TEST_OPT0:
-        case TEST_OPT1:
+        case OPTION_TYPE_1:
+            break;
+        case OPTION_TYPE_2:
             break;
         default:
-            //option not found
-            // this shouldn't happen
             break;
         }
         return false;
@@ -196,57 +185,50 @@ void UIOptionsMenu::_allocate_region()
     }
 }
 
-void UIOptionsMenu::on_show() 
+void UIOptionsMenu::on_show()
 {
-
-    if (selected_option >= NUM_OPTION_TYPE) {
+    if (selected_option >= NUM_OPTIONS)
         selected_option = OPTION_TYPE_UNSPECIFIED;
-    }
+
     int id;
-    if (selected_option != OPTION_TYPE_UNSPECIFIED) {
+    if (selected_option != OPTION_TYPE_UNSPECIFIED)
         id = selected_option;
-    }
-    else {
+    else
         id = 0;
-    }
+
     if (auto focus = options_menu->get_button_by_id(id)) {
         options_menu->scroll_button_into_view(focus);
     }
-    
+
     on_hotkey_event([this](const KeyEvent& ev) {
         const auto keyn = ev.key();
-
         if (key_is_escape(keyn) || keyn == CK_MOUSE_CMD)
         {
-            // exit option menu
-            end(0); // close game for now
+            // TODO: check for unsaved options here 
+            return done = true;
         }
-        
-        auto btn = options_menu->get_button(0,0);
-        options_menu->scroll_button_into_view(btn);
-        return true;
+        // TODO: detect ctrl-s to save
+        return false;
     });
-    
 }
 
 void UIOptionsMenu::menu_item_activated(int id)
 {
-    // should have cases for different input type options
-    // true false should have a menu
-    // string input should have a menu
     switch (id)
     {
-    case TEST_OPT0:
-    case TEST_OPT1:
-        // enter into second menu to choose true,false,input string,ect
-        done = true;
-        return;
+    case OPTION_TYPE_1:
+        break;
+    case OPTION_TYPE_2:
+        // TODO: should enter some method to modify diff option types
+        // one for bool, one for string, etc
+        break;
     default:
-        // this is an error
+        /// unknown option, bug if this happens, just quit to main menu
         done = true;
-        return;
+        break;
     }
 }
+
 
 static void _show_options_menu()
 {
@@ -262,4 +244,9 @@ static void _show_options_menu()
     auto popup = make_shared<ui::Popup>(options_ui);
 
     ui::run_layout(move(popup), options_ui->done);
+}
+#endif
+
+void options_menu() {  
+    _show_options_menu();
 }

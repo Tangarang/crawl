@@ -800,8 +800,9 @@ void UIStartupMenu::on_show()
     else
         id = 0;
 
-    if (auto focus = game_modes_menu->get_button_by_id(id))
+    if (auto focus = game_modes_menu->get_button_by_id(id)) {
         game_modes_menu->scroll_button_into_view(focus);
+    }
     else if (auto focus2 = save_games_menu->get_button_by_id(id))
         save_games_menu->scroll_button_into_view(focus2);
 
@@ -839,6 +840,10 @@ void UIStartupMenu::on_show()
             input_string = "";
             changed_name = true;
         }
+        else if (keyn == CONTROL('O')) {
+            options_menu();
+            return true;
+        }
 
         if (keyn == ' ' && first_action)
         {
@@ -871,11 +876,6 @@ void UIStartupMenu::on_show()
                 input_string.erase(input_string.size() - 1);
                 changed_name = true;
             }
-        }
-        else if (keyn == CONTROL('O')) {
-            // call function here
-            options_menu();
-             
         }
 
         if (!changed_name)
