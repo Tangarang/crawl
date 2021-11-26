@@ -11,7 +11,7 @@
 #include "libutil.h"
 #include "libconsole.h"
 #include "outer-menu.h"
-
+#include "viewchar.h"
 // core program of options_menu
 
 using namespace ui;
@@ -19,9 +19,18 @@ using namespace ui;
 // this should contain all possible option names
 enum option_identifier {
     OPTION_TYPE_UNSPECIFIED,
+    // boolean options
     OPTION_TYPE_1, 
+    // string options
     OPTION_TYPE_2,
     NUM_OPTIONS
+};
+
+enum bool_option {
+    BOOL_UNSPECIFIED,
+    FALSE_BOOL,
+    TRUE_BOOL,
+    NUM_BOOL
 };
 
 #ifndef DGAMELAUNCH // does not work with dgamelaunch?
@@ -35,9 +44,338 @@ struct options_menu_item
 
 static const options_menu_item entries[] =
 {
-    {OPTION_TYPE_1, "Test 1", "testing one"},
+    {OPTION_TYPE_1, "Test 1", "testing one" },
     {OPTION_TYPE_2, "Test 2", "testing two" },
 };
+
+
+static void _construct_boolean_menu(shared_ptr<OuterMenu>& container) {
+    auto trueLabel = make_shared<Text>();
+    auto falseLabel = make_shared<Text>();
+
+#ifdef USE_TILE_LOCAL
+    auto hbox = make_shared<Box>(Box::HORZ); // naming will conflict with false tile below
+    hbox->set_cross_alignment(Widget::Align::CENTER);
+    auto tile = make_shared<Image>();
+    tile->set_tile(tile_def(tileidx_gametype(entry.id))); // need to define true tile
+    tile->set_margin_for_sdl(0, 6, 0, 0);
+    hbox->add_child(move(tile));
+    hbox->add_child(trueLabel);
+#endif 
+
+    trueLabel->set_text(formatted_string("True", WHITE));
+
+    auto tBtn = make_shared<MenuButton>();
+#ifdef USE_TILE_LOCAL
+    hbox->set_margin_for_sdl(2, 10, 2, 2);
+    tBtn->set_child(move(hbox));
+#else
+    tBtn->set_child(move(trueLabel));
+#endif
+    tBtn->id = TRUE_BOOL;
+    tBtn->highlight_colour = LIGHTGREY;
+    container->add_button(move(tBtn), 0, 0);
+
+#ifdef USE_TILE_LOCAL
+    auto hbox = make_shared<Box>(Box::HORZ); // naming will conflict with true tile above
+    hbox->set_cross_alignment(Widget::Align::CENTER);
+    auto tile = make_shared<Image>();
+    tile->set_tile(tile_def(tileidx_gametype(entry.id))); // need to define false tile
+    tile->set_margin_for_sdl(0, 6, 0, 0);
+    hbox->add_child(move(tile));
+    hbox->add_child(falseLabel);
+#endif
+
+    falseLabel->set_text(formatted_string("False", WHITE));
+
+    auto fBtn = make_shared<MenuButton>();
+#ifdef USE_TILE_LOCAL
+    hbox->set_margin_for_sdl(2, 10, 2, 2);
+    fBtn->set_child(move(hbox));
+#else
+    fBtn->set_child(move(falseLabel));
+#endif
+    fBtn->id = FALSE_BOOL;
+    fBtn->highlight_colour = LIGHTGREY;
+    container->add_button(move(fBtn), 0, 1);
+}
+
+class BoolOptionMenu : public Widget {
+public: 
+    BoolOptionMenu(int *original_option) 
+        : done(false), selection(*original_option), changed_option(original_option){
+        m_root = make_shared<Box>(Box::VERT);
+        add_internal_child(m_root);
+        m_root->set_cross_alignment(Widget::Align::STRETCH);
+
+        auto grid = make_shared<Grid>();
+        grid->set_margin_for_crt(0, 0, 1, 0);
+
+        auto mode_prompt = make_shared<Text>("Choices:");
+        mode_prompt->set_margin_for_crt(0, 1, 1, 0);
+        mode_prompt->set_margin_for_sdl(0, 0, 10, 0);
+        bool_menu = make_shared<OuterMenu>(true, 1, 2);
+        bool_menu->set_margin_for_sdl(0, 0, 10, 10);
+        bool_menu->set_margin_for_crt(0, 0, 1, 0);
+        _construct_boolean_menu(bool_menu);
+
+
+#ifdef USE_TILE_LOCAL
+        bool_menu->min_size().height = TILE_Y * 3;
+#else
+        bool_menu->min_size().height = 2;
+#endif
+
+        grid->add_child(move(mode_prompt), 0, 1);
+        grid->add_child(bool_menu, 1, 1);
+
+        m_root->on_activate_event([this](const ActivateEvent& event) {
+            const auto button = static_pointer_cast<const MenuButton>(event.target());
+            this->menu_item_activated(button->id);
+            return true;
+        });
+        grid->column_flex_grow(0) = 1;
+        grid->column_flex_grow(1) = 10;
+
+        m_root->add_child(move(grid));
+    }
+    virtual void _render() override;
+    virtual SizeReq _get_preferred_size(Direction dim, int prosp_width) override;
+    virtual void _allocate_region() override;
+
+    bool has_allocated = false;
+
+    bool done;
+    virtual shared_ptr<Widget> get_child_at_offset(int, int) override {
+        return m_root;
+    }
+private:
+    void on_show();
+    void menu_item_activated(int id);
+
+    int selection;
+    int* changed_option;
+    shared_ptr<Box> m_root;
+    shared_ptr<OuterMenu> bool_menu;
+};
+
+SizeReq BoolOptionMenu::_get_preferred_size(Direction dim, int prosp_width)
+{
+    return m_root->get_preferred_size(dim, prosp_width);
+}
+
+void BoolOptionMenu::_render()
+{
+    m_root->render();
+}
+
+void BoolOptionMenu::_allocate_region()
+{
+    m_root->allocate_region(m_region);
+
+    if (!has_allocated)
+    {
+        has_allocated = true;
+        on_show();
+    }
+}
+
+void BoolOptionMenu::on_show()
+{
+    if (selection >= NUM_BOOL)
+        selection = BOOL_UNSPECIFIED;
+
+    int id;
+    if (selection != BOOL_UNSPECIFIED)
+        id = selection;
+    else
+        id = 0;
+
+    if (auto focus = bool_menu->get_button_by_id(id)) {
+        bool_menu->scroll_button_into_view(focus);
+    }
+
+    on_hotkey_event([this](const KeyEvent& ev) {
+        const auto keyn = ev.key();
+        if (key_is_escape(keyn) || keyn == CK_MOUSE_CMD)
+        {
+            return done = true;
+        }
+        return false;
+    });
+}
+
+void BoolOptionMenu::menu_item_activated(int id)
+{
+    // TODO: file should be changed here, will likely need more information to modify the file
+    switch (id)
+    {
+    case FALSE_BOOL:
+        // set false
+        *changed_option = FALSE_BOOL;
+        break;
+    case TRUE_BOOL:
+        // set true
+        *changed_option = TRUE_BOOL;
+        break;
+    default:
+        /// unknown option, bug if this happens, just quit to main menu
+        break;
+    }
+    done = true;
+}
+
+
+static void _show_bool_menu(int *initial_selection)
+{
+    unwind_bool no_more(crawl_state.show_more_prompt, false);
+
+#if defined(USE_TILE_LOCAL) && defined(TOUCH_UI)
+    wm->show_keyboard();
+#elif defined(USE_TILE_WEB)
+    tiles_crt_popup show_as_popup;
+#endif
+
+    auto bool_ui = make_shared<BoolOptionMenu>(initial_selection);
+    auto popup = make_shared<ui::Popup>(bool_ui);
+
+    ui::run_layout(move(popup), bool_ui->done);
+}
+/*
+static void _construct_string_menu(shared_ptr<OuterMenu>& container) {
+
+}
+*/
+class StringOptionMenu : public Widget {
+public:
+    StringOptionMenu(string* original_string) 
+    : done(false), selection(*original_string), changed_string(original_string)
+    {
+        m_root = make_shared<Box>(Box::VERT);
+        add_internal_child(m_root);
+        m_root->set_cross_alignment(Widget::Align::STRETCH);
+
+        auto grid = make_shared<Grid>();
+        grid->set_margin_for_crt(0, 0, 1, 0);
+
+        auto name_prompt = make_shared<Text>("Enter option text:");
+        name_prompt->set_margin_for_crt(0, 1, 1, 0);
+        name_prompt->set_margin_for_sdl(0, 0, 10, 0);
+
+        input_text = make_shared<Text>(formatted_string(selection, WHITE));
+        input_text->set_margin_for_crt(0, 0, 1, 0);
+        input_text->set_margin_for_sdl(0, 0, 10, 10);
+
+        grid->add_child(move(name_prompt), 0, 0);
+        grid->add_child(input_text, 1, 0);
+
+        grid->column_flex_grow(0) = 1;
+        grid->column_flex_grow(1) = 10;
+
+        m_root->add_child(move(grid));
+    }
+    virtual void _render() override;
+    virtual SizeReq _get_preferred_size(Direction dim, int prosp_width) override;
+    virtual void _allocate_region() override;
+
+    bool has_allocated = false;
+
+    bool done;
+    virtual shared_ptr<Widget> get_child_at_offset(int, int) override {
+        return m_root;
+    }
+
+private:
+    void on_show();
+    bool first_action = true;
+    string selection;
+    string* changed_string;
+    shared_ptr<Box> m_root;
+    shared_ptr<Text> input_text;
+};
+
+SizeReq StringOptionMenu::_get_preferred_size(Direction dim, int prosp_width)
+{
+    return m_root->get_preferred_size(dim, prosp_width);
+}
+
+void StringOptionMenu::_render()
+{
+    m_root->render();
+}
+
+void StringOptionMenu::_allocate_region()
+{
+    m_root->allocate_region(m_region);
+
+    if (!has_allocated)
+    {
+        has_allocated = true;
+        on_show();
+    }
+}
+
+void StringOptionMenu::on_show() {
+    on_hotkey_event([this](const KeyEvent& ev) {
+        const auto keyn = ev.key();
+        bool changed_option = false;
+        if (key_is_escape(keyn) || keyn == CK_MOUSE_CMD || keyn == CK_ENTER)
+        {
+            
+            return done = true;
+        }
+
+        if (keyn == ' ' && changed_string->empty())
+        {
+            first_action = false;
+            *changed_string = "";
+            changed_option = true;
+        }
+        else if (iswalnum(keyn) || keyn == '-' || keyn == '.'
+            || keyn == '_' || keyn == ' ')
+        {
+            first_action = false;
+            *changed_string += stringize_glyph(keyn);
+            changed_option = true;
+        }
+        else if (keyn == CK_BKSP)
+        {
+            if (changed_string->empty())
+            {
+                first_action = false;
+                *changed_string = "";
+                changed_option = true;
+            }
+            else
+            {
+                changed_string->erase(changed_string->size() - 1);
+                changed_option = true;
+            }
+        }
+
+        if (!changed_option)
+            return false;
+
+        input_text->set_text(formatted_string(*changed_string, WHITE));
+
+        return true;
+    });
+}
+
+static void _show_string_menu(string *original_string) {
+    unwind_bool no_more(crawl_state.show_more_prompt, false);
+
+#if defined(USE_TILE_LOCAL) && defined(TOUCH_UI)
+    wm->show_keyboard();
+#elif defined(USE_TILE_WEB)
+    tiles_crt_popup show_as_popup;
+#endif
+
+    auto string_ui = make_shared<StringOptionMenu>(original_string);
+    auto popup = make_shared<ui::Popup>(string_ui);
+
+    ui::run_layout(move(popup), string_ui->done);
+}
 
 static void _construct_options_menu(shared_ptr<OuterMenu>& container)
 {
@@ -75,7 +413,7 @@ static void _construct_options_menu(shared_ptr<OuterMenu>& container)
 class UIOptionsMenu : public Widget
 {
 public:
-    UIOptionsMenu() : done(false), selected_option(1)
+    UIOptionsMenu() : done(false), selected_option(1) // use name
     {
         m_root = make_shared<Box>(Box::VERT);
         add_internal_child(m_root);
@@ -110,13 +448,6 @@ public:
             return true;
         });
 
-        for (auto& w : options_menu->get_buttons())
-        {
-            w->on_focusin_event([w, this](const FocusEvent&) {
-                return this->on_button_focusin(*w);
-            });
-        }
-
         grid->column_flex_grow(0) = 1;
         grid->column_flex_grow(1) = 10;
 
@@ -139,25 +470,9 @@ public:
     }
 
 private:
-
-    bool on_button_focusin(const MenuButton& btn)
-    {
-        selected_option = btn.id;
-        switch (selected_option)
-        {
-        case OPTION_TYPE_1:
-            break;
-        case OPTION_TYPE_2:
-            break;
-        default:
-            break;
-        }
-        return false;
-    }
-
     void on_show();
     void menu_item_activated(int id);
-
+    
     shared_ptr<Box> m_root;
     shared_ptr<Switcher> descriptions;
     shared_ptr<OuterMenu> options_menu;
@@ -216,11 +531,26 @@ void UIOptionsMenu::menu_item_activated(int id)
 {
     switch (id)
     {
-    case OPTION_TYPE_1:
+    case OPTION_TYPE_1: // boolean options
+    {
+        int fileOpt = TRUE_BOOL; // should pass initial value from options file
+        int* ptr = &fileOpt;
+        _show_bool_menu(ptr);
+        if (fileOpt == FALSE_BOOL) { // opposite of initial
+            // change option in file
+        }
+    }
         break;
-    case OPTION_TYPE_2:
-        // TODO: should enter some method to modify diff option types
-        // one for bool, one for string, etc
+    case OPTION_TYPE_2: // string options
+    {
+        string fileOpt = "test"; // should be set to initial value from file
+        string oldOpt = fileOpt;
+        string* ptr = &fileOpt;
+        _show_string_menu(ptr);
+        if (fileOpt != oldOpt) {
+            // update in file, should call some sort of check to make sure option is valid before updating
+        }
+    }
         break;
     default:
         /// unknown option, bug if this happens, just quit to main menu
@@ -228,7 +558,6 @@ void UIOptionsMenu::menu_item_activated(int id)
         break;
     }
 }
-
 
 static void _show_options_menu()
 {
@@ -245,8 +574,9 @@ static void _show_options_menu()
 
     ui::run_layout(move(popup), options_ui->done);
 }
-#endif
 
 void options_menu() {  
     _show_options_menu();
 }
+
+#endif
