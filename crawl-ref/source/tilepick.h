@@ -12,6 +12,7 @@
 #include "rltiles/tiledef_defines.h"
 #include "job-type.h"
 #include "species-type.h"
+#include "options_menu.h"
 
 #define TILE_NUM_KEY "tile_num"
 
@@ -56,6 +57,8 @@ tileidx_t tileidx_spell(const spell_type spell);
 tileidx_t tileidx_skill(const skill_type skill, int train);
 tileidx_t tileidx_command(const command_type cmd);
 tileidx_t tileidx_gametype(const game_type gtype);
+tileidx_t tileidx_options(const option_identifier otype);
+tileidx_t tileidx_boolean(const bool_option btype);
 tileidx_t tileidx_ability(const ability_type ability);
 tileidx_t tileidx_branch(const branch_type br);
 tileidx_t tileidx_player_job(const job_type job, bool recommended);

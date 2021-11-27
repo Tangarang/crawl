@@ -40,6 +40,7 @@
 #include "transform.h"
 #include "traps.h"
 #include "viewgeom.h"
+#include "options_menu.h"
 
 // This should not be changed.
 COMPILE_CHECK(TILE_DNGN_UNSEEN == 0);
@@ -3380,6 +3381,24 @@ tileidx_t tileidx_command(const command_type cmd)
 #endif
     default:
         return TILEG_TODO;
+    }
+}
+
+tileidx_t tileidx_options(const option_identifier otype) {
+    if (otype != OPTION_TYPE_UNSPECIFIED) {
+        return TILEG_TODO;
+    }
+    else {
+        return TILEG_ERROR;
+    }
+}
+
+tileidx_t tileidx_boolean(const bool_option btype) {
+    if (btype != BOOL_UNSPECIFIED) {
+        return TILEG_TODO;
+    }
+    else {
+        return TILEG_ERROR;
     }
 }
 

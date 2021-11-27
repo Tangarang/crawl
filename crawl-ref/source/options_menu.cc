@@ -12,28 +12,14 @@
 #include "libconsole.h"
 #include "outer-menu.h"
 #include "viewchar.h"
+#ifdef USE_TILE
+#include "tilepick.h"
+#endif
 // core program of options_menu
 
 using namespace ui;
 
-// this should contain all possible option names
-enum option_identifier {
-    OPTION_TYPE_UNSPECIFIED,
-    // boolean options
-    OPTION_TYPE_1, 
-    // string options
-    OPTION_TYPE_2,
-    NUM_OPTIONS
-};
-
-enum bool_option {
-    BOOL_UNSPECIFIED,
-    FALSE_BOOL,
-    TRUE_BOOL,
-    NUM_BOOL
-};
-
-#ifndef DGAMELAUNCH // does not work with dgamelaunch?
+#ifndef DGAMELAUNCH
 
 struct options_menu_item
 {
@@ -54,21 +40,21 @@ static void _construct_boolean_menu(shared_ptr<OuterMenu>& container) {
     auto falseLabel = make_shared<Text>();
 
 #ifdef USE_TILE_LOCAL
-    auto hbox = make_shared<Box>(Box::HORZ); // naming will conflict with false tile below
-    hbox->set_cross_alignment(Widget::Align::CENTER);
-    auto tile = make_shared<Image>();
-    tile->set_tile(tile_def(tileidx_gametype(entry.id))); // need to define true tile
-    tile->set_margin_for_sdl(0, 6, 0, 0);
-    hbox->add_child(move(tile));
-    hbox->add_child(trueLabel);
+    auto thbox = make_shared<Box>(Box::HORZ);
+    thbox->set_cross_alignment(Widget::Align::CENTER);
+    auto ttile = make_shared<Image>();
+    ttile->set_tile(tile_def(tileidx_boolean(TRUE_BOOL)));
+    ttile->set_margin_for_sdl(0, 6, 0, 0);
+    thbox->add_child(move(ttile));
+    thbox->add_child(trueLabel);
 #endif 
 
     trueLabel->set_text(formatted_string("True", WHITE));
 
     auto tBtn = make_shared<MenuButton>();
 #ifdef USE_TILE_LOCAL
-    hbox->set_margin_for_sdl(2, 10, 2, 2);
-    tBtn->set_child(move(hbox));
+    thbox->set_margin_for_sdl(2, 10, 2, 2);
+    tBtn->set_child(move(thbox));
 #else
     tBtn->set_child(move(trueLabel));
 #endif
@@ -77,21 +63,21 @@ static void _construct_boolean_menu(shared_ptr<OuterMenu>& container) {
     container->add_button(move(tBtn), 0, 0);
 
 #ifdef USE_TILE_LOCAL
-    auto hbox = make_shared<Box>(Box::HORZ); // naming will conflict with true tile above
-    hbox->set_cross_alignment(Widget::Align::CENTER);
-    auto tile = make_shared<Image>();
-    tile->set_tile(tile_def(tileidx_gametype(entry.id))); // need to define false tile
-    tile->set_margin_for_sdl(0, 6, 0, 0);
-    hbox->add_child(move(tile));
-    hbox->add_child(falseLabel);
+    auto fhbox = make_shared<Box>(Box::HORZ);
+    fhbox->set_cross_alignment(Widget::Align::CENTER);
+    auto ftile = make_shared<Image>();
+    ftile->set_tile(tile_def(tileidx_boolean(FALSE_BOOL)));
+    ftile->set_margin_for_sdl(0, 6, 0, 0);
+    fhbox->add_child(move(ftile));
+    fhbox->add_child(falseLabel);
 #endif
 
     falseLabel->set_text(formatted_string("False", WHITE));
 
     auto fBtn = make_shared<MenuButton>();
 #ifdef USE_TILE_LOCAL
-    hbox->set_margin_for_sdl(2, 10, 2, 2);
-    fBtn->set_child(move(hbox));
+    fhbox->set_margin_for_sdl(2, 10, 2, 2);
+    fBtn->set_child(move(fhbox));
 #else
     fBtn->set_child(move(falseLabel));
 #endif
@@ -207,7 +193,6 @@ void BoolOptionMenu::on_show()
 
 void BoolOptionMenu::menu_item_activated(int id)
 {
-    // TODO: file should be changed here, will likely need more information to modify the file
     switch (id)
     {
     case FALSE_BOOL:
@@ -219,7 +204,6 @@ void BoolOptionMenu::menu_item_activated(int id)
         *changed_option = TRUE_BOOL;
         break;
     default:
-        /// unknown option, bug if this happens, just quit to main menu
         break;
     }
     done = true;
@@ -241,11 +225,7 @@ static void _show_bool_menu(int *initial_selection)
 
     ui::run_layout(move(popup), bool_ui->done);
 }
-/*
-static void _construct_string_menu(shared_ptr<OuterMenu>& container) {
 
-}
-*/
 class StringOptionMenu : public Widget {
 public:
     StringOptionMenu(string* original_string) 
@@ -388,7 +368,7 @@ static void _construct_options_menu(shared_ptr<OuterMenu>& container)
         auto hbox = make_shared<Box>(Box::HORZ);
         hbox->set_cross_alignment(Widget::Align::CENTER);
         auto tile = make_shared<Image>();
-        tile->set_tile(tile_def(tileidx_gametype(entry.id))); // need to define options tiles
+        tile->set_tile(tile_def(tileidx_options(entry.id)));
         tile->set_margin_for_sdl(0, 6, 0, 0);
         hbox->add_child(move(tile));
         hbox->add_child(label);
@@ -413,7 +393,7 @@ static void _construct_options_menu(shared_ptr<OuterMenu>& container)
 class UIOptionsMenu : public Widget
 {
 public:
-    UIOptionsMenu() : done(false), selected_option(1) // use name
+    UIOptionsMenu() : done(false), selected_option(1)
     {
         m_root = make_shared<Box>(Box::VERT);
         add_internal_child(m_root);
@@ -553,7 +533,6 @@ void UIOptionsMenu::menu_item_activated(int id)
     }
         break;
     default:
-        /// unknown option, bug if this happens, just quit to main menu
         done = true;
         break;
     }
