@@ -1,5 +1,6 @@
 #include "options_menu.h"
 #include <string>
+#include <fstream>
 #include "branch-type.h"
 #include <map>
 #include "skill-type.h"
@@ -30,7 +31,7 @@ struct options_menu_item
 
 static const options_menu_item entries[] =
 {
-    {OPTION_TYPE_1, "Test 1", "testing one" },
+    {OPTION_TYPE_1, "Ammo", "Ammo Option" },
     {OPTION_TYPE_2, "Test 2", "testing two" },
     {OPTION_TYPE_3, "Exit", "Quit to Main Menu"},
 };
@@ -312,7 +313,6 @@ void StringOptionMenu::on_show() {
         bool changed_option = false;
         if (key_is_escape(keyn) || keyn == CK_MOUSE_CMD || keyn == CK_ENTER)
         {
-            
             return done = true;
         }
 
@@ -533,9 +533,15 @@ void UIOptionsMenu::menu_item_activated(int id)
         int fileOpt = TRUE_BOOL; // should pass initial value from options file
         int* ptr = &fileOpt;
         _show_bool_menu(ptr, false);
+        std::ofstream myfile;
+        myfile.open ("NewOptions.txt");
         if (fileOpt == FALSE_BOOL) { // opposite of initial
             // change option in file
+            myfile << "0";
+        } else{
+            myfile << "1";
         }
+        myfile.close();
     }
         break;
     case OPTION_TYPE_2: // string options
@@ -554,8 +560,16 @@ void UIOptionsMenu::menu_item_activated(int id)
         int fileOpt = TRUE_BOOL; // should pass initial value from options file
         int* ptr = &fileOpt;
         _show_bool_menu(ptr, true);
-        if (fileOpt == FALSE_BOOL) { // opposite of initial
-            // change option in file
+        if (fileOpt == TRUE_BOOL) { // opposite of initial
+            string line;
+            std::ofstream myfile;
+            myfile.open ("options.txt");
+            std::ifstream newfile;
+            newfile.open ("NewOptions.txt");
+            getline(newfile, line);
+            myfile << line;
+            newfile.close();
+            myfile.close();
         }
         done = true;
     }
