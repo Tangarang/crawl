@@ -9,6 +9,10 @@ enum option_identifier {
     OPTION_TYPE_1,
     // string options
     OPTION_TYPE_2,
+    // Exit - no save
+    OPTION_TYPE_3,
+    // Exit - with save
+    OPTION_TYPE_4,
     NUM_OPTIONS
 };
 

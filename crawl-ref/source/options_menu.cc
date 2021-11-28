@@ -32,10 +32,11 @@ static const options_menu_item entries[] =
 {
     {OPTION_TYPE_1, "Test 1", "testing one" },
     {OPTION_TYPE_2, "Test 2", "testing two" },
+    {OPTION_TYPE_3, "Exit", "Quit to Main Menu"},
 };
 
 
-static void _construct_boolean_menu(shared_ptr<OuterMenu>& container) {
+static void _construct_boolean_menu(shared_ptr<OuterMenu>& container, bool exit) {
     auto trueLabel = make_shared<Text>();
     auto falseLabel = make_shared<Text>();
 
@@ -50,6 +51,9 @@ static void _construct_boolean_menu(shared_ptr<OuterMenu>& container) {
 #endif 
 
     trueLabel->set_text(formatted_string("True", WHITE));
+    if(exit){
+        trueLabel->set_text(formatted_string("Exit and Save", WHITE));
+    }
 
     auto tBtn = make_shared<MenuButton>();
 #ifdef USE_TILE_LOCAL
@@ -73,6 +77,9 @@ static void _construct_boolean_menu(shared_ptr<OuterMenu>& container) {
 #endif
 
     falseLabel->set_text(formatted_string("False", WHITE));
+    if(exit){
+        falseLabel->set_text(formatted_string("Exit without Saving", WHITE));
+    }
 
     auto fBtn = make_shared<MenuButton>();
 #ifdef USE_TILE_LOCAL
@@ -86,9 +93,10 @@ static void _construct_boolean_menu(shared_ptr<OuterMenu>& container) {
     container->add_button(move(fBtn), 0, 1);
 }
 
+
 class BoolOptionMenu : public Widget {
 public: 
-    BoolOptionMenu(int *original_option) 
+    BoolOptionMenu(int *original_option, bool exit) 
         : done(false), selection(*original_option), changed_option(original_option){
         m_root = make_shared<Box>(Box::VERT);
         add_internal_child(m_root);
@@ -96,14 +104,17 @@ public:
 
         auto grid = make_shared<Grid>();
         grid->set_margin_for_crt(0, 0, 1, 0);
-
         auto mode_prompt = make_shared<Text>("Choices:");
+        if(exit){
+            mode_prompt = make_shared<Text>("Exiting:");
+        }
+        
         mode_prompt->set_margin_for_crt(0, 1, 1, 0);
         mode_prompt->set_margin_for_sdl(0, 0, 10, 0);
         bool_menu = make_shared<OuterMenu>(true, 1, 2);
         bool_menu->set_margin_for_sdl(0, 0, 10, 10);
         bool_menu->set_margin_for_crt(0, 0, 1, 0);
-        _construct_boolean_menu(bool_menu);
+        _construct_boolean_menu(bool_menu, exit);
 
 
 #ifdef USE_TILE_LOCAL
@@ -114,7 +125,7 @@ public:
 
         grid->add_child(move(mode_prompt), 0, 1);
         grid->add_child(bool_menu, 1, 1);
-
+        
         m_root->on_activate_event([this](const ActivateEvent& event) {
             const auto button = static_pointer_cast<const MenuButton>(event.target());
             this->menu_item_activated(button->id);
@@ -125,6 +136,7 @@ public:
 
         m_root->add_child(move(grid));
     }
+    
     virtual void _render() override;
     virtual SizeReq _get_preferred_size(Direction dim, int prosp_width) override;
     virtual void _allocate_region() override;
@@ -209,8 +221,7 @@ void BoolOptionMenu::menu_item_activated(int id)
     done = true;
 }
 
-
-static void _show_bool_menu(int *initial_selection)
+static void _show_bool_menu(int *initial_selection, bool exit)
 {
     unwind_bool no_more(crawl_state.show_more_prompt, false);
 
@@ -220,7 +231,7 @@ static void _show_bool_menu(int *initial_selection)
     tiles_crt_popup show_as_popup;
 #endif
 
-    auto bool_ui = make_shared<BoolOptionMenu>(initial_selection);
+    auto bool_ui = make_shared<BoolOptionMenu>(initial_selection, exit);
     auto popup = make_shared<ui::Popup>(bool_ui);
 
     ui::run_layout(move(popup), bool_ui->done);
@@ -498,7 +509,13 @@ void UIOptionsMenu::on_show()
     on_hotkey_event([this](const KeyEvent& ev) {
         const auto keyn = ev.key();
         if (key_is_escape(keyn) || keyn == CK_MOUSE_CMD)
-        {
+        {   
+            int fileOpt = TRUE_BOOL; // should pass initial value from options file
+            int* ptr = &fileOpt;
+            _show_bool_menu(ptr, true);
+            if (fileOpt == FALSE_BOOL) { // opposite of initial
+                // change option in file
+            }
             // TODO: check for unsaved options here 
             return done = true;
         }
@@ -515,7 +532,7 @@ void UIOptionsMenu::menu_item_activated(int id)
     {
         int fileOpt = TRUE_BOOL; // should pass initial value from options file
         int* ptr = &fileOpt;
-        _show_bool_menu(ptr);
+        _show_bool_menu(ptr, false);
         if (fileOpt == FALSE_BOOL) { // opposite of initial
             // change option in file
         }
@@ -530,6 +547,21 @@ void UIOptionsMenu::menu_item_activated(int id)
         if (fileOpt != oldOpt) {
             // update in file, should call some sort of check to make sure option is valid before updating
         }
+    }
+        break;
+    case OPTION_TYPE_3: // boolean options
+    {
+        int fileOpt = TRUE_BOOL; // should pass initial value from options file
+        int* ptr = &fileOpt;
+        _show_bool_menu(ptr, true);
+        if (fileOpt == FALSE_BOOL) { // opposite of initial
+            // change option in file
+        }
+        done = true;
+    }
+    case OPTION_TYPE_4: // Exit options
+    {
+        
     }
         break;
     default:
