@@ -13,6 +13,7 @@
 #include "libconsole.h"
 #include "outer-menu.h"
 #include "viewchar.h"
+#include "startup.h"
 #ifdef USE_TILE
 #include "tilepick.h"
 #endif
@@ -513,11 +514,19 @@ void UIOptionsMenu::on_show()
             int fileOpt = TRUE_BOOL; // should pass initial value from options file
             int* ptr = &fileOpt;
             _show_bool_menu(ptr, true);
-            if (fileOpt == FALSE_BOOL) { // opposite of initial
-                // change option in file
+            if (fileOpt == TRUE_BOOL) { // opposite of initial
+                string line;
+                std::ofstream myfile;
+                myfile.open ("options.txt");
+                std::ifstream newfile;
+                newfile.open ("NewOptions.txt");
+                getline(newfile, line);
+                myfile << line;
+                newfile.close();
+                myfile.close();
             }
-            // TODO: check for unsaved options here 
-            return done = true;
+            done = true;
+            startup_step();
         }
         // TODO: detect ctrl-s to save
         return false;
@@ -572,6 +581,7 @@ void UIOptionsMenu::menu_item_activated(int id)
             myfile.close();
         }
         done = true;
+        startup_step();
     }
     case OPTION_TYPE_4: // Exit options
     {
