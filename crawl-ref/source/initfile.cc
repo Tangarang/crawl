@@ -151,18 +151,9 @@ const vector<GameOption*> game_options::build_options_list()
 #endif
 #endif
 
-bool ammob=false;
-string ammoS;
-std::ifstream myfile;
-myfile.open ("options.txt");
-getline(myfile,ammoS);
-myfile.close();
-
-ammob = (ammoS == "1");
-
     #define SIMPLE_NAME(_opt) _opt, {#_opt}
     vector<GameOption*> options = {
-        new BoolGameOption(SIMPLE_NAME(autopickup_starting_ammo), ammob),
+        new BoolGameOption(SIMPLE_NAME(autopickup_starting_ammo), true),
         new BoolGameOption(SIMPLE_NAME(easy_door), true),
         new BoolGameOption(SIMPLE_NAME(default_show_all_skills), false),
         new BoolGameOption(SIMPLE_NAME(read_persist_options), false),

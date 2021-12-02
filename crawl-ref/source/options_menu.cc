@@ -14,6 +14,7 @@
 #include "outer-menu.h"
 #include "viewchar.h"
 #include "startup.h"
+#include "initfile.h"
 #ifdef USE_TILE
 #include "tilepick.h"
 #endif
@@ -32,8 +33,8 @@ struct options_menu_item
 
 static const options_menu_item entries[] =
 {
-    {OPTION_TYPE_1, "Ammo", "Ammo Option" },
-    {OPTION_TYPE_2, "Test 2", "testing two" },
+    {OPTION_TYPE_1, "Show game time", "show_game_time" },
+    {OPTION_TYPE_2, "Name", "name" },
     {OPTION_TYPE_3, "Exit", "Quit to Main Menu"},
 };
 
@@ -511,24 +512,17 @@ void UIOptionsMenu::on_show()
         const auto keyn = ev.key();
         if (key_is_escape(keyn) || keyn == CK_MOUSE_CMD)
         {   
-            int fileOpt = TRUE_BOOL; // should pass initial value from options file
+            int fileOpt = TRUE_BOOL;
             int* ptr = &fileOpt;
             _show_bool_menu(ptr, true);
-            if (fileOpt == TRUE_BOOL) { // opposite of initial
-                string line;
-                std::ofstream myfile;
-                myfile.open ("options.txt");
-                std::ifstream newfile;
-                newfile.open ("NewOptions.txt");
-                getline(newfile, line);
-                myfile << line;
-                newfile.close();
-                myfile.close();
+            if (fileOpt == TRUE_BOOL) { // save on exit
+                std::ifstream src("NewOptions.txt", std::ios::binary);
+                std::ofstream dst("options.txt", std::ios::binary);
+                dst << src.rdbuf();
+                std::ofstream clear("NewOptions.txt", std::ofstream::out | std::ofstream::trunc); // clear NewOptions
             }
             done = true;
-            startup_step();
         }
-        // TODO: detect ctrl-s to save
         return false;
     });
 }
@@ -542,46 +536,43 @@ void UIOptionsMenu::menu_item_activated(int id)
         int fileOpt = TRUE_BOOL; // should pass initial value from options file
         int* ptr = &fileOpt;
         _show_bool_menu(ptr, false);
-        std::ofstream myfile;
-        myfile.open ("NewOptions.txt");
+        std::string optionName = std::string(entries[id-1].description);
+        std::ofstream outFile("NewOptions.txt", std::ios_base::app | std::ios_base::out);
         if (fileOpt == FALSE_BOOL) { // opposite of initial
             // change option in file
-            myfile << "0";
+            optionName += " = false\n";
         } else{
-            myfile << "1";
+            optionName += " = true\n";
         }
-        myfile.close();
+        outFile << optionName;
     }
         break;
     case OPTION_TYPE_2: // string options
     {
-        string fileOpt = "test"; // should be set to initial value from file
+        string fileOpt = ""; // should be set to initial value from file
         string oldOpt = fileOpt;
         string* ptr = &fileOpt;
         _show_string_menu(ptr);
         if (fileOpt != oldOpt) {
-            // update in file, should call some sort of check to make sure option is valid before updating
+            std::string optionName = std::string(entries[id - 1].description);
+            std::ofstream outFile("NewOptions.txt", std::ios_base::app | std::ios_base::out);
+            optionName += " = " + fileOpt + "\n";
+            outFile << optionName;
         }
     }
         break;
-    case OPTION_TYPE_3: // boolean options
+    case OPTION_TYPE_3: // exit
     {
         int fileOpt = TRUE_BOOL; // should pass initial value from options file
         int* ptr = &fileOpt;
         _show_bool_menu(ptr, true);
         if (fileOpt == TRUE_BOOL) { // opposite of initial
-            string line;
-            std::ofstream myfile;
-            myfile.open ("options.txt");
-            std::ifstream newfile;
-            newfile.open ("NewOptions.txt");
-            getline(newfile, line);
-            myfile << line;
-            newfile.close();
-            myfile.close();
+            std::ifstream src("NewOptions.txt", std::ios::binary);
+            std::ofstream dst("options.txt", std::ios::binary);
+            dst << src.rdbuf();
+            std::ofstream clear("NewOptions.txt", std::ofstream::out | std::ofstream::trunc); // clear NewOptions
         }
         done = true;
-        startup_step();
     }
     case OPTION_TYPE_4: // Exit options
     {
@@ -612,6 +603,10 @@ static void _show_options_menu()
 
 void options_menu() {  
     _show_options_menu();
+    std::ifstream input("options.txt");
+    for (std::string line; getline(input, line); ) {
+        read_options(line, false, false);
+    }
 }
 
 #endif
