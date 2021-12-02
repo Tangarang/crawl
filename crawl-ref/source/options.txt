@@ -1,1 +1,0 @@
-show_game_time = false

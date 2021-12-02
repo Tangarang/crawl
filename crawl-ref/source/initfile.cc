@@ -2168,6 +2168,10 @@ void game_options::fixup_options()
 
     if (!check_mkdir("Morgue directory", &morgue_dir))
         end(1, false, "Cannot create morgue directory '%s'", morgue_dir.c_str());
+    std::ifstream input("options.txt");
+    for (std::string line; getline(input, line); ) {
+        read_option_line(line, false);
+    }
 }
 
 static int _str_to_killcategory(const string &s)

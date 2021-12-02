@@ -34,7 +34,7 @@ struct options_menu_item
 static const options_menu_item entries[] =
 {
     {OPTION_TYPE_1, "Show game time", "show_game_time" },
-    {OPTION_TYPE_2, "Name", "name" },
+    {OPTION_TYPE_2, "Show game time - string", "show_game_time" },
     {OPTION_TYPE_3, "Exit", "Quit to Main Menu"},
 };
 
@@ -602,11 +602,7 @@ static void _show_options_menu()
 }
 
 void options_menu() {  
-    _show_options_menu();
-    std::ifstream input("options.txt");
-    for (std::string line; getline(input, line); ) {
-        read_options(line, false, false);
-    }
+    _show_options_menu();   
 }
 
 #endif

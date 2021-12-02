@@ -809,7 +809,6 @@ void UIStartupMenu::on_show()
     on_hotkey_event([this](const KeyEvent& ev) {
         const auto keyn = ev.key();
         bool changed_name = false;
-
         if (key_is_escape(keyn) || keyn == CK_MOUSE_CMD)
         {
             // End the game
@@ -1092,8 +1091,8 @@ bool startup_step()
     }
     if (Options.remember_name)
         crawl_state.default_startup_name = you.your_name;
-
     _post_init(newchar);
+
 
     return newchar;
 }
